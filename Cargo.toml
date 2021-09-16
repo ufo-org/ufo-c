@@ -11,7 +11,7 @@ anyhow = "1.0.38"
 crossbeam = "0.8.0" 
 libc = "0.2.80"
 stderrlog = "0.5.1"
-ufos_core = { git = "https://github.com/ufo-org/ufos-core.git", branch = "main" }
+ufos_core = { git = "https://github.com/ufo-org/ufo-core.git", branch = "main" }
 
 
 [lib]
