@@ -15,5 +15,5 @@ fn main() {
         .with_trailer("#define strideOf(_type) ( (uint32_t) (uint64_t) ( ((_type*) 0) + 1) )\n")
         .generate()
         .unwrap()
-        .write_to_file("target/ufos_c.h");
+        .write_to_file("target/ufo_c.h");
 }
