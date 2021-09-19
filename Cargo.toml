@@ -21,9 +21,5 @@ crate-type = ["dylib", "staticlib"]
 [build-dependencies]
 cbindgen = "0.18.0"
 
-[build]
-target_os = "linux"
-
-
 [profile.release]
 lto = true # better optimizations
