@@ -1,5 +1,5 @@
 [package]
-name = "ufos_c"
+name = "ufo_c"
 version = "0.1.0"
 authors = ["Colette 🌩︎‍💝 Kerr <Colette.m.y.Kerr@gmail.com>"]
 edition = "2018"
@@ -16,7 +16,7 @@ ufo_core = { git = "https://github.com/ufo-org/ufo-core.git", branch = "main" }
 
 
 [lib]
-name = "ufos_c"
+name = "ufo_c"
 crate-type = ["dylib", "staticlib"]
 
 [build-dependencies]
