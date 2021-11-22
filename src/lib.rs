@@ -8,6 +8,8 @@ pub use crate::prototype::*;
 mod object;
 pub use crate::object::*;
 
+pub use ufo_core::{UfoEvent, UfoEventandTimestamp, UfoUnloadDisposition};
+
 #[no_mangle]
 pub extern "C" fn ufo_begin_log() {
     stderrlog::new()

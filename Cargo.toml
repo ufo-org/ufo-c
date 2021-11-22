@@ -11,8 +11,8 @@ anyhow = "1.0.38"
 crossbeam = "0.8.0" 
 libc = "0.2.80"
 stderrlog = "0.5.1"
-ufo_core = { git = "https://github.com/ufo-org/ufo-core.git", branch = "main" }
-#ufo_core = { path = "../ufo-core/" }
+#ufo_core = { git = "https://github.com/ufo-org/ufo-core.git", branch = "main" }
+ufo_core = { path = "/home/ckerr/workspace/ufo/ufo-core" }
 
 
 [lib]
@@ -21,6 +21,7 @@ crate-type = ["dylib", "staticlib"]
 
 [build-dependencies]
 cbindgen = "0.18.0"
+stderrlog = "0.5.1"
 
 [profile.release]
 lto = true # better optimizations

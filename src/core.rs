@@ -1,11 +1,17 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use libc::c_void;
-use ufo_core::{UfoCoreConfig, UfoId, UfoObjectParams, UfoPopulateError};
+use ufo_core::{UfoCoreConfig, UfoId, UfoObjectParams, UfoPopulateError, UfoWritebackListenerFn};
 
 use crate::UfoPopulateData;
 
 use super::*;
+
+pub type UfoEventCallbackData = *mut libc::c_void;
+pub type UfoEventCallback = extern "C" fn(UfoEventCallbackData, &UfoEventandTimestamp);
 
 pub(crate) struct PopulateInfo {
     pub(crate) data: UfoPopulateData,
@@ -89,25 +95,25 @@ impl UfoCore {
     pub extern "C" fn ufo_get_params(&self, ufo: &UfoObj, params: *mut UfoParameters) -> i32 {
         return std::panic::catch_unwind(|| {
             self.deref()
-            .zip(ufo.deref())
-            .and_then(|(core, ufo)| {
-                let ufo = ufo.read().expect("can't lock ufo");
-                let map = core.data_map.read().expect("can't lock map");
-                
-                let ufo_dat = map.get(&ufo.id)?;
-                let params = unsafe {&mut *params};
+                .zip(ufo.deref())
+                .and_then(|(core, ufo)| {
+                    let ufo = ufo.read().expect("can't lock ufo");
+                    let map = core.data_map.read().expect("can't lock map");
 
-                params.header_size = ufo.config.header_size();
-                params.element_size = ufo.config.stride();
-                params.element_ct = ufo.config.element_ct();
-                params.min_load_ct = ufo.config.elements_loaded_at_once();
-                params.read_only = ufo.config.read_only();
-                params.populate_data = ufo_dat.data;
-                params.populate_fn = ufo_dat.function;
+                    let ufo_dat = map.get(&ufo.id)?;
+                    let params = unsafe { &mut *params };
 
-                Some(0)
-            })
-            .unwrap_or(-1)
+                    params.header_size = ufo.config.header_size();
+                    params.element_size = ufo.config.stride();
+                    params.element_ct = ufo.config.element_ct();
+                    params.min_load_ct = ufo.config.elements_loaded_at_once();
+                    params.read_only = ufo.config.read_only();
+                    params.populate_data = ufo_dat.data;
+                    params.populate_fn = ufo_dat.function;
+
+                    Some(0)
+                })
+                .unwrap_or(-1)
         })
         .unwrap_or(-2);
     }
@@ -140,6 +146,15 @@ impl UfoCore {
                 }
             };
 
+            let writeback_listener: Option<Box<UfoWritebackListenerFn>>;
+            if let Some(c_listener) = prototype.writeback_listener {
+                let writeback_listener_data = prototype.writeback_listener_data as usize;
+                let raw_listener = move |event| c_listener(writeback_listener_data as *mut c_void, event);
+                writeback_listener = Some(Box::new(raw_listener));
+            }else{
+                writeback_listener = None;
+            }
+
             let params = UfoObjectParams {
                 header_size: prototype.header_size,
                 stride: prototype.element_size,
@@ -147,6 +162,7 @@ impl UfoCore {
                 min_load_ct: Some(prototype.min_load_ct).filter(|x| *x > 0),
                 read_only: prototype.read_only,
                 populate: Box::new(populate),
+                writeback_listener,
             };
 
             self.deref()
@@ -154,7 +170,8 @@ impl UfoCore {
                     let ufo = core.the_core.allocate_ufo(params.new_config());
                     match ufo {
                         Ok(ufo) => {
-                            let mut data_map = core.data_map.write().expect("unable to lock data map");
+                            let mut data_map =
+                                core.data_map.write().expect("unable to lock data map");
                             let id = ufo.read().expect("can't get read lock").id;
                             data_map.insert(
                                 id,
@@ -172,5 +189,43 @@ impl UfoCore {
                 .unwrap_or_else(|| UfoObj::none())
         })
         .unwrap_or_else(|_| UfoObj::none())
+    }
+
+    #[no_mangle]
+    pub extern "C" fn ufo_new_event_handler(
+        &self,
+        callback: UfoEventCallback,
+        callback_data: UfoEventCallbackData,
+    ) -> bool {
+        std::panic::catch_unwind(|| {
+            self.deref()
+                .and_then(|core| {
+                    let masked_callback_data = callback_data as usize;
+                    let cb: Option<Box<ufo_core::UfoEventConsumer>> = Some(Box::new(move |e| {
+                        callback(masked_callback_data as *mut c_void, e)
+                    }));
+                    core.the_core
+                        .new_event_callback(cb)
+                        .expect("error installing new event callback");
+                    Some(true)
+                })
+                .unwrap_or(false)
+        })
+        .unwrap_or(false)
+    }
+
+    #[no_mangle]
+    pub extern "C" fn ufo_clear_event_handler(&self) -> bool {
+        std::panic::catch_unwind(|| {
+            self.deref()
+                .and_then(|core| {
+                    core.the_core
+                        .new_event_callback(None)
+                        .expect("error installing new event callback");
+                    Some(true)
+                })
+                .unwrap_or(false)
+        })
+        .unwrap_or(false)
     }
 }
