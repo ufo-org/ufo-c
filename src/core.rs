@@ -149,9 +149,10 @@ impl UfoCore {
             let writeback_listener: Option<Box<UfoWritebackListenerFn>>;
             if let Some(c_listener) = prototype.writeback_listener {
                 let writeback_listener_data = prototype.writeback_listener_data as usize;
-                let raw_listener = move |event| c_listener(writeback_listener_data as *mut c_void, event);
+                let raw_listener =
+                    move |event| c_listener(writeback_listener_data as *mut c_void, event);
                 writeback_listener = Some(Box::new(raw_listener));
-            }else{
+            } else {
                 writeback_listener = None;
             }
 
@@ -194,8 +195,8 @@ impl UfoCore {
     #[no_mangle]
     pub extern "C" fn ufo_new_event_handler(
         &self,
-        callback: UfoEventCallback,
         callback_data: UfoEventCallbackData,
+        callback: UfoEventCallback,
     ) -> bool {
         std::panic::catch_unwind(|| {
             self.deref()
