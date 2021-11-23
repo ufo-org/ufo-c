@@ -69,7 +69,13 @@ impl UfoCore {
     }
 
     #[no_mangle]
-    pub extern "C" fn ufo_core_shutdown(self) {}
+    pub extern "C" fn ufo_core_shutdown(self) {
+        std::panic::catch_unwind(|| {
+            if let Some(core) = self.deref() {
+                core.the_core.shutdown();
+            }
+        }).expect("error during shutdown");
+    }
 
     #[no_mangle]
     pub extern "C" fn ufo_core_is_error(&self) -> bool {
