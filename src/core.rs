@@ -14,14 +14,19 @@ use super::*;
 pub type UfoEventCallbackData = *mut libc::c_void;
 pub type UfoEventCallback = extern "C" fn(UfoEventCallbackData, &UfoEventandTimestamp);
 
-pub(crate) struct PopulateInfo {
-    pub(crate) data: UfoPopulateData,
-    pub(crate) function: UfoPopulateCallout,
+/// Rust uses closures, but C uses callback functions and data pointers
+/// store these parameters ourselves
+pub(crate) struct CParams {
+    pub(crate) populate_data: UfoPopulateData,
+    pub(crate) populate_fn: UfoPopulateCallout,
+
+    pub(crate) writeback_listener_data: UfoWritebackListenerData,
+    pub(crate) writeback_listener: UfoWritebackListener,
 }
 
 pub(crate) struct UfoCCore {
     pub(crate) the_core: Arc<ufo_core::UfoCore>,
-    pub(crate) data_map: RwLock<HashMap<UfoId, PopulateInfo>>,
+    pub(crate) data_map: RwLock<HashMap<UfoId, CParams>>,
 }
 
 #[repr(C)]
@@ -115,8 +120,10 @@ impl UfoCore {
                     params.element_ct = ufo.config.element_ct().total().elements;
                     params.min_load_ct = ufo.config.elements_loaded_at_once().alignment_quantum().elements;
                     params.read_only = ufo.config.read_only();
-                    params.populate_data = ufo_dat.data;
-                    params.populate_fn = ufo_dat.function;
+                    params.populate_data = ufo_dat.populate_data;
+                    params.populate_fn = ufo_dat.populate_fn;
+                    params.writeback_listener_data = ufo_dat.writeback_listener_data;
+                    params.writeback_listener = ufo_dat.writeback_listener;
 
                     Some(0)
                 })
@@ -183,9 +190,12 @@ impl UfoCore {
                             let id = ufo.read().expect("can't get read lock").id;
                             data_map.insert(
                                 id,
-                                PopulateInfo {
-                                    data: prototype.populate_data,
-                                    function: prototype.populate_fn,
+                                CParams {
+                                    populate_data: prototype.populate_data,
+                                    populate_fn: prototype.populate_fn,
+
+                                    writeback_listener_data: prototype.writeback_listener_data,
+                                    writeback_listener: prototype.writeback_listener,
                                 },
                             );
 
