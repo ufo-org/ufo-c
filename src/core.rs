@@ -5,6 +5,7 @@ use std::{
 
 use libc::c_void;
 use ufo_core::{UfoCoreConfig, UfoId, UfoObjectParams, UfoPopulateError, UfoWritebackListenerFn};
+use ufo_core::sizes::*;
 
 use crate::UfoPopulateData;
 
@@ -109,10 +110,10 @@ impl UfoCore {
                     let ufo_dat = map.get(&ufo.id)?;
                     let params = unsafe { &mut *params };
 
-                    params.header_size = ufo.config.header_size();
-                    params.element_size = ufo.config.stride();
-                    params.element_ct = ufo.config.element_ct();
-                    params.min_load_ct = ufo.config.elements_loaded_at_once();
+                    params.header_size = ufo.config.header_size().bytes;
+                    params.element_size = ufo.config.stride().alignment_quantum().bytes;
+                    params.element_ct = ufo.config.element_ct().total().elements;
+                    params.min_load_ct = ufo.config.elements_loaded_at_once().alignment_quantum().elements;
                     params.read_only = ufo.config.read_only();
                     params.populate_data = ufo_dat.data;
                     params.populate_fn = ufo_dat.function;
